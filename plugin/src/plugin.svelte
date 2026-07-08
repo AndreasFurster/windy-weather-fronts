@@ -30,7 +30,7 @@
         </select>
 
         {#if dataset}
-            <div class="size-s mb-5 mt-15">Valid time (UTC)</div>
+            <div class="size-s mb-5 mt-15">Valid time ({showUtc ? 'UTC' : 'local'})</div>
             <div class="timesteps">
                 {#each dataset.timesteps as step, i}
                     <button
@@ -41,7 +41,7 @@
                         <span class="lead">
                             {step.forecastHours === 0 ? 'Analysis' : `+${step.forecastHours} h`}
                         </span>
-                        <span>{formatTime(step.validTime)}</span>
+                        <span>{formatTime(step.validTime, showUtc)}</span>
                     </button>
                 {/each}
             </div>
@@ -49,6 +49,11 @@
             <label class="size-s mt-10 checkbox-row">
                 <input type="checkbox" bind:checked={followWindyTime} />
                 Follow the Windy timeline
+            </label>
+
+            <label class="size-s mt-5 checkbox-row">
+                <input type="checkbox" bind:checked={showUtc} />
+                Show times in UTC
             </label>
 
             <button class="zoom-btn mt-10" on:click={zoomToCoverage}>
@@ -64,8 +69,8 @@
             </div>
 
             <div class="size-xs mt-15 muted">
-                <div>Issued: {dataset.issuedTime ? formatTime(dataset.issuedTime) : 'unknown'}</div>
-                <div>Collected by backend: {formatTime(dataset.fetchedAt)}</div>
+                <div>Issued: {dataset.issuedTime ? formatTime(dataset.issuedTime, showUtc) : 'unknown'}</div>
+                <div>Collected by backend: {formatTime(dataset.fetchedAt, showUtc)}</div>
                 <div class="mt-5">{dataset.attribution}</div>
                 {#if dataset.method === 'image-extraction'}
                     <div class="mt-5">
@@ -98,6 +103,7 @@
     let dataset: SourceDataset | null = null;
     let selectedStep = 0;
     let followWindyTime = false;
+    let showUtc = false;
     let error: string | null = null;
 
     const layer = new FrontsLayer();
@@ -166,12 +172,14 @@
         }
     };
 
-    const formatTime = (iso: string): string => {
+    const formatTime = (iso: string, utc: boolean): string => {
         const d = new Date(iso);
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const pad = (n: number): string => String(n).padStart(2, '0');
-        return `${pad(d.getUTCDate())} ${months[d.getUTCMonth()]} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+        return utc
+            ? `${pad(d.getUTCDate())} ${months[d.getUTCMonth()]} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`
+            : `${pad(d.getDate())} ${months[d.getMonth()]} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     };
 
     export const onopen = (_params: unknown): void => {

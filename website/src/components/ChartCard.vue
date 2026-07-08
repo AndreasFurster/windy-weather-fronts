@@ -1,27 +1,30 @@
 <script setup lang="ts">
 import { chartUrl, type ChartSourceIndex, type StoredChart } from '../api';
+import { formatTime } from '../time';
 
 defineProps<{
     source: ChartSourceIndex;
     chart: StoredChart;
+    utc: boolean;
 }>();
 
 const emit = defineEmits<{
     zoom: [];
 }>();
-
-function formatUtc(iso: string): string {
-    const d = new Date(iso);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${pad(d.getUTCDate())} ${months[d.getUTCMonth()]} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
-}
 </script>
 
 <template>
     <article class="card">
-        <button class="image-wrap" @click="emit('zoom')" :title="'Click to enlarge'">
+        <video
+            v-if="chart.mediaType === 'video'"
+            class="media"
+            :src="chartUrl(chart)"
+            controls
+            loop
+            muted
+            playsinline
+        />
+        <button v-else class="media zoomable" @click="emit('zoom')" title="Click to enlarge">
             <img :src="chartUrl(chart)" :alt="`${source.name} — ${chart.label}`" loading="lazy" />
         </button>
         <div class="meta">
@@ -30,7 +33,7 @@ function formatUtc(iso: string): string {
                 <span class="label">{{ chart.label }}</span>
             </div>
             <div class="row muted">
-                <span v-if="chart.validTime">Valid {{ formatUtc(chart.validTime) }}</span>
+                <span v-if="chart.validTime">Valid {{ formatTime(chart.validTime, utc) }}</span>
                 <span v-else>{{ source.region }}</span>
                 <a :href="source.pageUrl" target="_blank" rel="noopener">source ↗</a>
             </div>
@@ -53,17 +56,22 @@ function formatUtc(iso: string): string {
     border-color: var(--accent);
 }
 
-.image-wrap {
+.media {
     display: block;
     margin: 0;
     padding: 0;
     border: 0;
     background: #fff;
-    cursor: zoom-in;
     aspect-ratio: 3 / 2;
+    width: 100%;
 }
 
-.image-wrap img {
+.zoomable {
+    cursor: zoom-in;
+}
+
+.media img,
+video.media {
     width: 100%;
     height: 100%;
     object-fit: contain;
@@ -89,6 +97,8 @@ function formatUtc(iso: string): string {
     color: var(--accent);
     font-size: 13px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .muted {

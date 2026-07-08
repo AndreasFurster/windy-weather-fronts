@@ -1,101 +1,54 @@
-# Windy Weather Fronts Plugin
+# Windy Weather Fronts
 
-A [Windy plugin](https://docs.windy-plugins.com/) that displays weather fronts
-(cold, warm, occluded, stationary, troughs) and pressure centers from multiple
-sources, plus a small backend that periodically collects and vectorizes the
-data.
+Weather fronts from multiple (mostly European) weather services, in three
+parts:
 
-## How it works
+| Part | Description |
+| --- | --- |
+| [`server/`](server/) | Node.js backend: periodically collects front data (vectorized GeoJSON + mirrored chart images) and serves it over a JSON API |
+| [`plugin/`](plugin/) | Windy.com plugin: renders fronts and H/L pressure centers on the Windy map with classic front symbology |
+| [`website/`](website/) | Vite/Vue/TS site: side-by-side comparison grid of the mirrored front charts from all sources |
 
 ```
-KNMI chart images ──┐  (color masking, thinning,
-                    │   tracing, georeferencing)
-NOAA WPC bulletins ─┼─► server/ (Node.js) ─► GeoJSON API ─► Windy plugin (src/)
-                    │  refreshes every hour,
-Met Office IAC ─────┘  persists to server/data/
+KNMI chart images ────┐ (color masking, thinning,
+                      │  tracing, georeferencing)
+NOAA WPC bulletins ───┤
+Met Office IAC ───────┼─► server/ ──► GeoJSON API ───► plugin/  (Windy map)
+meteo.be video ───────┤            └► mirrored     ──► website/ (chart grid)
+DWD / AEMET /         │               chart images
+Met Office / MF images┘
 ```
 
-### Sources
-
-| Source | Region | Times | Method |
-| --- | --- | --- | --- |
-| KNMI ([weerkaarten](https://www.knmi.nl/nederland-nu/weer/waarschuwingen-en-verwachtingen/weerkaarten)) | Europe / NE Atlantic | analysis + forecasts (~+12/+24/+36 h) | image extraction |
-| NOAA WPC (coded surface bulletins [CODSUS](https://tgftp.nws.noaa.gov/data/raw/as/asus02.kwbc.cod.sus.txt) / CODSRP) | North America | analysis + 12–48 h forecasts | coded text, exact |
-| Met Office (IAC FLEET, ASXX21 EGRR via NOAA) | Europe / North Atlantic | analysis | coded text, exact |
-
-KNMI does not publish front geometry as raw data, so the backend vectorizes it
-from the published GIF charts:
-
-1. The chart palette is exact, so cold (blue), warm (red) and occluded
-   (purple) fronts are isolated with per-color masks.
-2. Connected components are thinned (Zhang-Suen), symbol bumps are pruned and
-   the centerline is traced and simplified (`server/src/knmi/image.ts`).
-3. Fragments cut apart by overdrawn isobars/labels are re-joined; H/L letters
-   are filtered by size; alternating red/blue segment chains are merged into
-   stationary fronts (`server/src/knmi/extract.ts`).
-4. Pixel coordinates are mapped to lat/lon through the chart's polar
-   stereographic projection (`server/src/knmi/georef.ts`). The projection
-   parameters were least-squares fitted against the chart's 10° graticule
-   with `npm run calibrate` (median residual ≈ 0.25 px) and verified against
-   coastline landmarks. If KNMI ever changes the chart layout, rerun
-   `npm run calibrate` in `server/` and paste the new parameters into
-   `georef.ts`.
-
-Extracted KNMI geometry is approximate (a few kilometers at chart scale); the
-WPC and Met Office sources are exact as published.
-
-## Running it
-
-### 1. Backend
-
-Requires Node.js ≥ 23.6 (runs TypeScript natively).
+## Quick start
 
 ```sh
-cd server
-npm install
-npm start          # listens on http://localhost:3311
+# 1. Backend (Node.js >= 23.6; ffmpeg optional, used for meteo.be frames)
+cd server && npm install && npm start        # http://localhost:3311
+
+# 2. Website
+cd website && npm install && npm run dev     # http://localhost:5173
+
+# 3. Windy plugin
+cd plugin && npm install && npm start        # https://localhost:9999
+#    then load https://localhost:9999/plugin.js at windy.com/developer-mode
 ```
 
-All sources are refreshed at startup and then every hour
-(`refreshMinutes` per source in `server/src/sources/*.ts`). Data is persisted
-to `server/data/` so restarts keep serving the last good dataset.
+Each part has its own README with details, publishing/deployment steps and
+data-source documentation.
 
-API:
+## Data sources
 
-- `GET /api/sources` — source metadata + available valid times
-- `GET /api/fronts/:sourceId` — full dataset (all timesteps, GeoJSON) for
-  `knmi`, `wpc` or `metoffice`
-- `GET /health`
+**Vectorized front geometry** (shown in the Windy plugin):
 
-### 2. Plugin
+- **KNMI** — fronts + H/L pressure centers are vectorized from the published
+  chart images (KNMI does not publish the raw geometry); approximate.
+- **NOAA WPC** — coded surface bulletins (CODSUS/CODSRP), exact.
+- **Met Office** — IAC FLEET analysis (ASXX21 EGRR), exact.
 
-```sh
-npm install
-npm start          # serves the plugin on https://localhost:9999
-```
+**Mirrored chart images** (shown on the website; downloaded by the backend,
+never hotlinked): KNMI, KMI/RMI (meteo.be, frames extracted from their MP4
+animation with ffmpeg), DWD, Met Office, AEMET, wetterpate.de (FU Berlin) and
+Météo-France (requires `METEOFRANCE_TOKEN`, otherwise reported unavailable).
 
-Then open <https://www.windy.com/developer-mode> and load the plugin from
-`https://localhost:9999/plugin.js`.
-
-In the plugin you can switch between sources, pick a valid time
-(analysis or forecast), follow the Windy timeline, and see the usual front
-symbology (triangles = cold, semicircles = warm, alternating = occluded /
-stationary, dashed = trough) plus H/L pressure centers.
-
-The plugin talks to `http://localhost:3311` by default; change `BACKEND_URL`
-in [src/api.ts](src/api.ts) when you deploy the backend somewhere else (use
-https in production — browsers only allow mixed content for localhost).
-
-### Debug tooling
-
-- `cd server && npm run calibrate` — refit the KNMI chart georeferencing.
-- `cd server && npm run extract-preview <chart.gif> <out.json>` — dump traced
-  front pixel paths for overlaying on the source image.
-
-## Plugin template
-
-This repo is based on the official
-[windy-plugin-template](https://github.com/windycom/windy-plugin-template);
-the original examples live in `examples/` and the template documentation is at
-<https://docs.windy-plugins.com/>. Documentation for the Leaflet GL library is
-at <https://windycom.github.io/LeafletGL/docs/>.
+All displayed times are local; both the website and the plugin have a
+"Show times in UTC" toggle.

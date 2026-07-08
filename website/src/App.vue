@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { chartUrl, fetchChartSources, type ChartSourceIndex, type StoredChart } from './api';
+import { formatTime } from './time';
 import ChartCard from './components/ChartCard.vue';
 
 const sources = ref<ChartSourceIndex[]>([]);
@@ -8,6 +9,7 @@ const error = ref<string | null>(null);
 const loading = ref(true);
 const activeSources = ref<string[]>([]); // empty = all
 const analysisOnly = ref(true);
+const showUtc = ref(false);
 const lightbox = ref<{ src: string; title: string } | null>(null);
 
 let refreshTimer: ReturnType<typeof setInterval> | undefined;
@@ -100,10 +102,16 @@ function openLightbox(source: ChartSourceIndex, chart: StoredChart): void {
                         {{ source.name }}
                     </button>
                 </div>
-                <label class="toggle">
-                    <input type="checkbox" v-model="analysisOnly" />
-                    Analysis only
-                </label>
+                <div class="toggles">
+                    <label class="toggle">
+                        <input type="checkbox" v-model="analysisOnly" />
+                        Analysis only
+                    </label>
+                    <label class="toggle" title="Times are shown in your local timezone by default">
+                        <input type="checkbox" v-model="showUtc" />
+                        Show times in UTC
+                    </label>
+                </div>
             </div>
 
             <div class="grid">
@@ -112,6 +120,7 @@ function openLightbox(source: ChartSourceIndex, chart: StoredChart): void {
                     :key="`${source.id}/${chart.file}`"
                     :source="source"
                     :chart="chart"
+                    :utc="showUtc"
                     @zoom="openLightbox(source, chart)"
                 />
             </div>
@@ -137,7 +146,7 @@ function openLightbox(source: ChartSourceIndex, chart: StoredChart): void {
                         <a :href="source.pageUrl" target="_blank" rel="noopener">{{ source.name }}</a>
                         — {{ source.attribution }}
                         <span v-if="source.fetchedAt" class="fetched">
-                            (mirrored {{ new Date(source.fetchedAt).toLocaleString() }})
+                            (mirrored {{ formatTime(source.fetchedAt, showUtc) }})
                         </span>
                     </li>
                 </ul>
@@ -204,6 +213,11 @@ main {
 .chip.active {
     color: var(--text);
     border-color: var(--accent);
+}
+
+.toggles {
+    display: flex;
+    gap: 16px;
 }
 
 .toggle {

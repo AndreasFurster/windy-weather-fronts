@@ -9,5 +9,7 @@ node_modules
 package-lock.json
 *.log
 plugin/dist/
+website/dist/
 server/data/
+*.tsbuildinfo
 

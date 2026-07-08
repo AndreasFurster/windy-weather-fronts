@@ -7,6 +7,7 @@
 
 import type { ChartImage, ChartSource } from './types.ts';
 import { findKnmiCharts, KNMI_PAGE_URL } from '../sources/knmi.ts';
+import { meteobeSource } from './meteobe.ts';
 
 const UA = { 'user-agent': 'windy-weather-fronts (chart mirror)' };
 
@@ -194,6 +195,7 @@ const meteofrance: ChartSource = {
 
 export const chartSources: ChartSource[] = [
     knmi,
+    meteobeSource,
     dwd,
     metofficeCharts,
     aemet,

@@ -11,11 +11,11 @@ const config: ExternalPluginConfig = {
         + 'bulletins and the Met Office IAC FLEET analysis. Requires the companion backend '
         + 'from the plugin repository.',
     author: 'Andreas Furster',
-    repository: 'https://github.com/andreasfurster/windy-weather-fronts',
+    repository: 'https://github.com/AndreasFurster/windy-weather-fronts',
     desktopUI: 'rhpane',
     mobileUI: 'fullscreen',
     routerPath: '/weather-fronts',
-    private: true,
+    private: false,
 };
 
 export default config;

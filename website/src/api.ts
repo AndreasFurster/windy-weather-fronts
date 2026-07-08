@@ -7,6 +7,7 @@ export interface StoredChart {
     label: string;
     validTime?: string;
     forecastHours?: number;
+    mediaType: 'image' | 'video';
     originUrl: string;
 }
 

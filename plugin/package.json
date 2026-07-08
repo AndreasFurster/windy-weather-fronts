@@ -1,7 +1,7 @@
 {
-    "name": "windy-plugin-template",
-    "version": "5.0.1",
-    "description": "Template for developing Windy Plugins",
+    "name": "windy-plugin-weather-fronts",
+    "version": "1.0.0",
+    "description": "Windy plugin that shows weather fronts and pressure centers from KNMI, NOAA WPC and Met Office data",
     "main": "dist/plugin.min.js",
     "type": "module",
     "scripts": {
@@ -20,19 +20,20 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/windycom/windy-plugin-template.git"
+        "url": "git+https://github.com/AndreasFurster/windy-weather-fronts.git"
     },
     "keywords": [
         "windy",
         "windy.com",
-        "plugins"
+        "plugins",
+        "weather-fronts"
     ],
-    "author": "Windyty, S.E.",
+    "author": "Andreas Furster",
     "license": "ISC",
     "bugs": {
-        "url": "https://github.com/windycom/windy-plugin-template/issues"
+        "url": "https://github.com/AndreasFurster/windy-weather-fronts/issues"
     },
-    "homepage": "https://docs.windy-plugins.com/",
+    "homepage": "https://github.com/AndreasFurster/windy-weather-fronts",
     "dependencies": {
         "@windycom/plugin-devtools": "^3.0.3"
     }
