@@ -165,7 +165,7 @@ function openLightbox(source: ChartSourceIndex, chart: StoredChart): void {
 <style scoped>
 header {
     padding: 28px 24px 4px;
-    max-width: 1500px;
+    max-width: 1800px;
     margin: 0 auto;
 }
 
@@ -181,7 +181,7 @@ h1 {
 
 main {
     padding: 16px 24px 40px;
-    max-width: 1500px;
+    max-width: 1800px;
     margin: 0 auto;
 }
 
@@ -231,7 +231,7 @@ main {
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
 }
 

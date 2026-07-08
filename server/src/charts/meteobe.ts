@@ -88,6 +88,7 @@ export const meteobeSource: ChartSource = {
             label: 'Front animation (times in video, local)',
             fileName: 'fronts.mp4',
             mediaType: 'video',
+            forecastHours: 0,
             data: video,
         }];
     },
