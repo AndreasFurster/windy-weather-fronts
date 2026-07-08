@@ -1,9 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { chartSources } from '../../../src/charts/sources.js';
-import { blobReadJson, blobWriteJson } from '../../../src/blobKv.js';
-import { refreshChartSourceToBlob } from '../../../src/charts/blobCollector.js';
-import { requireRefreshToken } from '../../../src/refreshAuth.js';
-import type { ChartSourceIndex } from '../../../src/charts/types.js';
+import { BlobDataStore } from '../../../src/blobDataStore.js';
+import { handleRefreshCharts, isRefreshTokenValid } from '../../../src/apiHandlers.js';
 
 /**
  * Refreshes one mirrored chart-image source and stores the images + index in
@@ -12,26 +10,11 @@ import type { ChartSourceIndex } from '../../../src/charts/types.js';
  * meant to be hit from a browser.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
-    if (!requireRefreshToken(req, res)) return;
-
-    const sourceId = req.query.sourceId as string;
-    const source = chartSources.find(s => s.id === sourceId);
-    if (!source) {
-        res.status(404).json({ error: `unknown chart source '${sourceId}'` });
+    if (!isRefreshTokenValid(req.headers['x-refresh-token'])) {
+        res.status(401).json({ error: 'invalid or missing x-refresh-token header' });
         return;
     }
-
-    const started = Date.now();
-    const previous = await blobReadJson<ChartSourceIndex>(`charts/meta/${sourceId}.json`);
-
-    const updated = await refreshChartSourceToBlob(source, previous);
-    await blobWriteJson(`charts/meta/${sourceId}.json`, updated);
-
-    res.status(updated.available ? 200 : 502).json({
-        ok: updated.available,
-        sourceId,
-        durationMs: Date.now() - started,
-        charts: updated.charts.length,
-        error: updated.error,
-    });
+    const sourceId = req.query.sourceId as string;
+    const { status, body } = await handleRefreshCharts(new BlobDataStore(), chartSources, sourceId);
+    res.status(status).json(body);
 }

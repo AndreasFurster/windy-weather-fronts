@@ -21,6 +21,15 @@ import { Store } from './store.js';
 import { frontsSources } from './sources/index.js';
 import { ChartCollector } from './charts/collector.js';
 import { chartSources } from './charts/sources.js';
+import { DiskDataStore } from './diskDataStore.js';
+import {
+    handleGetSources,
+    handleGetFronts,
+    handleGetCharts,
+    handleRefreshFronts,
+    handleRefreshCharts,
+    isRefreshTokenValid,
+} from './apiHandlers.js';
 
 const PORT = parseInt(process.env.PORT ?? '3311', 10);
 const DATA_DIR = process.env.DATA_DIR
@@ -31,33 +40,14 @@ const CHARTS_DIR = join(DATA_DIR, 'charts');
 // setInterval scheduler, plain disk storage). The Vercel deployment uses the
 // serverless functions under api/ instead (see api/refresh/**), which share
 // the same source adapters but persist to Vercel Blob — see server/README.md.
-const sources = frontsSources;
 const store = new Store(DATA_DIR);
 const chartCollector = new ChartCollector(CHARTS_DIR);
-
-async function refreshSource(source: FrontsSource): Promise<void> {
-    const { id } = source.info;
-    try {
-        const started = Date.now();
-        const result = await source.fetch();
-        await store.put({
-            sourceId: id,
-            fetchedAt: new Date().toISOString(),
-            ...result,
-        });
-        const nFeatures = result.timesteps.reduce((n, t) => n + t.geojson.features.length, 0);
-        console.log(
-            `[${id}] refreshed in ${Date.now() - started}ms: ` +
-            `${result.timesteps.length} timesteps, ${nFeatures} features`);
-    } catch (err) {
-        console.error(`[${id}] refresh failed (keeping previous data):`, err);
-    }
-}
+const dataStore = new DiskDataStore(store, chartCollector);
 
 function startScheduler(): void {
-    for (const source of sources) {
-        void refreshSource(source);
-        setInterval(() => void refreshSource(source), source.info.refreshMinutes * 60_000);
+    for (const source of frontsSources) {
+        void refreshFrontsSource(source);
+        setInterval(() => void refreshFrontsSource(source), source.info.refreshMinutes * 60_000);
     }
     for (const source of chartSources) {
         void chartCollector.refresh(source);
@@ -68,38 +58,41 @@ function startScheduler(): void {
     }
 }
 
+async function refreshFrontsSource(source: FrontsSource): Promise<void> {
+    const { id } = source.info;
+    try {
+        const started = Date.now();
+        const result = await source.fetch();
+        await store.put({ sourceId: id, fetchedAt: new Date().toISOString(), ...result });
+        const nFeatures = result.timesteps.reduce((n, t) => n + t.geojson.features.length, 0);
+        console.log(
+            `[${id}] refreshed in ${Date.now() - started}ms: ` +
+            `${result.timesteps.length} timesteps, ${nFeatures} features`);
+    } catch (err) {
+        console.error(`[${id}] refresh failed (keeping previous data):`, err);
+    }
+}
+
 const app = express();
 
 // The Windy plugin runs on windy.com; allow cross-origin reads.
 app.use((_req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
     next();
 });
 
-app.get('/health', (_req, res) => {
-    res.json({ ok: true });
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+app.get('/api/sources', async (_req, res) => {
+    const { status, body } = await handleGetSources(dataStore, frontsSources);
+    res.status(status).json(body);
 });
 
-app.get('/api/sources', (_req, res) => {
-    res.json(sources.map(s => {
-        const dataset = store.get(s.info.id);
-        return {
-            ...s.info,
-            available: Boolean(dataset && dataset.timesteps.length),
-            issuedTime: dataset?.issuedTime ?? null,
-            fetchedAt: dataset?.fetchedAt ?? null,
-            times: dataset?.timesteps.map(t => ({
-                validTime: t.validTime,
-                forecastHours: t.forecastHours,
-            })) ?? [],
-        };
-    }));
-});
-
-app.get('/api/charts', (_req, res) => {
+app.get('/api/charts', async (_req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=120');
-    res.json(chartCollector.list());
+    const { status, body } = await handleGetCharts(dataStore);
+    res.status(status).json(body);
 });
 
 app.use('/charts', express.static(CHARTS_DIR, {
@@ -108,82 +101,28 @@ app.use('/charts', express.static(CHARTS_DIR, {
     setHeaders: res => res.setHeader('Access-Control-Allow-Origin', '*'),
 }));
 
-app.get('/api/fronts/:sourceId', (req, res) => {
-    const source = sources.find(s => s.info.id === req.params.sourceId);
-    if (!source) {
-        res.status(404).json({ error: `unknown source '${req.params.sourceId}'` });
-        return;
-    }
-    const dataset = store.get(source.info.id);
-    if (!dataset) {
-        res.status(503).json({ error: 'no data collected yet, try again shortly' });
-        return;
-    }
-    res.setHeader('Cache-Control', 'public, max-age=120');
-    res.json({ ...source.info, ...dataset });
+app.get('/api/fronts/:sourceId', async (req, res) => {
+    const { status, body } = await handleGetFronts(dataStore, frontsSources, req.params.sourceId);
+    if (status === 200) res.setHeader('Cache-Control', 'public, max-age=120');
+    res.status(status).json(body);
 });
 
-function checkRefreshToken(req: express.Request, res: express.Response): boolean {
-    const expected = process.env.REFRESH_TOKEN;
-    if (!expected) return true;
-    if (req.headers['x-refresh-token'] !== expected) {
-        res.status(401).json({ error: 'invalid or missing x-refresh-token header' });
-        return false;
-    }
-    return true;
-}
-
 app.post('/api/refresh/fronts/:sourceId', async (req, res) => {
-    if (!checkRefreshToken(req, res)) return;
-    const source = sources.find(s => s.info.id === req.params.sourceId);
-    if (!source) {
-        res.status(404).json({ error: `unknown source '${req.params.sourceId}'` });
+    if (!isRefreshTokenValid(req.headers['x-refresh-token'])) {
+        res.status(401).json({ error: 'invalid or missing x-refresh-token header' });
         return;
     }
-    const started = Date.now();
-    try {
-        const result = await source.fetch();
-        await store.put({
-            sourceId: source.info.id,
-            fetchedAt: new Date().toISOString(),
-            ...result,
-        });
-        const nFeatures = result.timesteps.reduce((n, t) => n + t.geojson.features.length, 0);
-        res.status(200).json({
-            ok: true,
-            sourceId: source.info.id,
-            durationMs: Date.now() - started,
-            timesteps: result.timesteps.length,
-            features: nFeatures,
-        });
-    } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        res.status(502).json({ ok: false, sourceId: source.info.id, error: message });
-    }
+    const { status, body } = await handleRefreshFronts(dataStore, frontsSources, req.params.sourceId);
+    res.status(status).json(body);
 });
 
 app.post('/api/refresh/charts/:sourceId', async (req, res) => {
-    if (!checkRefreshToken(req, res)) return;
-    const source = chartSources.find(s => s.id === req.params.sourceId);
-    if (!source) {
-        res.status(404).json({ error: `unknown chart source '${req.params.sourceId}'` });
+    if (!isRefreshTokenValid(req.headers['x-refresh-token'])) {
+        res.status(401).json({ error: 'invalid or missing x-refresh-token header' });
         return;
     }
-    const started = Date.now();
-    try {
-        await chartCollector.refresh(source);
-        const entry = chartCollector.list().find(e => e.id === source.id);
-        res.status(entry?.available ? 200 : 502).json({
-            ok: entry?.available ?? false,
-            sourceId: source.id,
-            durationMs: Date.now() - started,
-            charts: entry?.charts.length ?? 0,
-            error: entry?.error,
-        });
-    } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        res.status(502).json({ ok: false, sourceId: source.id, error: message });
-    }
+    const { status, body } = await handleRefreshCharts(dataStore, chartSources, req.params.sourceId);
+    res.status(status).json(body);
 });
 
 await store.load();
