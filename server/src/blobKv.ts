@@ -30,3 +30,17 @@ export async function blobWriteJson(pathname: string, value: unknown): Promise<v
         contentType: 'application/json',
     });
 }
+
+/**
+ * Reads every JSON blob under a prefix. Used instead of one shared "index"
+ * document so that parallel refreshes of different sources never race to
+ * read-modify-write the same key (each source writes only its own blob).
+ */
+export async function blobListJson<T>(prefix: string): Promise<T[]> {
+    const { blobs } = await list({ prefix });
+    const results = await Promise.all(blobs.map(async b => {
+        const res = await fetch(b.url, { cache: 'no-store' });
+        return res.ok ? (await res.json()) as T : null;
+    }));
+    return results.filter((v): v is T => v !== null);
+}
