@@ -235,6 +235,13 @@ main {
     gap: 16px;
 }
 
+@media (max-width: 700px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+}
+
 .notice {
     padding: 24px;
     text-align: center;

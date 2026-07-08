@@ -21,6 +21,7 @@ const emit = defineEmits<{
             :src="chartUrl(chart)"
             controls
             loop
+            autoplay
             muted
             playsinline
         />
@@ -28,7 +29,7 @@ const emit = defineEmits<{
             <img :src="chartUrl(chart)" :alt="`${source.name} — ${chart.label}`" loading="lazy" />
         </button>
         <div class="meta">
-            <div class="row">
+            <div class="top-row">
                 <span class="source">{{ source.name }}</span>
                 <span class="label">{{ chart.label }}</span>
             </div>
@@ -79,7 +80,16 @@ video.media {
 }
 
 .meta {
-    padding: 8px 12px 10px;
+    padding: 6px 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.top-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
 }
 
 .row {
@@ -91,6 +101,7 @@ video.media {
 
 .source {
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .label {
