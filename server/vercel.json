@@ -1,0 +1,15 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "framework": null,
+    "rewrites": [
+        { "source": "/health", "destination": "/api/health" }
+    ],
+    "functions": {
+        "api/refresh/fronts/[sourceId].ts": { "maxDuration": 60 },
+        "api/refresh/charts/[sourceId].ts": { "maxDuration": 60 },
+        "api/fronts/[sourceId].ts": { "maxDuration": 15 },
+        "api/sources.ts": { "maxDuration": 15 },
+        "api/charts.ts": { "maxDuration": 15 },
+        "api/health.ts": { "maxDuration": 10 }
+    }
+}

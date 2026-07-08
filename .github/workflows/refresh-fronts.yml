@@ -1,0 +1,56 @@
+name: refresh-fronts
+
+# Triggers the Vercel-deployed backend's per-source refresh endpoints on a
+# schedule. Vercel serverless functions have no long-running process to run
+# an in-process interval scheduler (unlike the local/Docker Express server in
+# server/src/index.ts), so this workflow is the scheduler for the Vercel
+# deployment. It works on any Vercel plan (Vercel Cron restricts free/Hobby
+# projects to once a day, which is too infrequent for hourly chart refresh).
+#
+# Required repo configuration (Settings > Secrets and variables > Actions):
+#   secrets.REFRESH_TOKEN            same value as the REFRESH_TOKEN env var
+#                                     set on the Vercel server project
+#   vars.WEATHER_FRONTS_SERVER_URL   optional override for the server URL
+#                                     (defaults to weather-fronts-server.vercel.app)
+#
+# Note: GitHub disables scheduled workflows on repositories with no commits
+# for 60 days; push any commit (or use "Run workflow" below) to reactivate.
+
+on:
+  schedule:
+    - cron: '7 * * * *' # hourly, a few minutes past the hour
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    env:
+      SERVER_URL: ${{ vars.WEATHER_FRONTS_SERVER_URL || 'https://weather-fronts-server.vercel.app' }}
+      REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+    steps:
+      - name: Check REFRESH_TOKEN is configured
+        run: |
+          if [ -z "$REFRESH_TOKEN" ]; then
+            echo "::error::Secret REFRESH_TOKEN is not configured" >&2
+            exit 1
+          fi
+
+      - name: Refresh vectorized front sources (knmi, wpc, metoffice)
+        run: |
+          for id in knmi wpc metoffice; do
+            ( curl -sS -X POST "$SERVER_URL/api/refresh/fronts/$id" \
+                -H "x-refresh-token: $REFRESH_TOKEN" \
+                --max-time 90 --fail-with-body \
+                || echo "::warning::refresh failed for fronts/$id" ) &
+          done
+          wait
+
+      - name: Refresh mirrored chart images
+        run: |
+          for id in knmi meteobe dwd metoffice aemet wetterpate meteofrance; do
+            ( curl -sS -X POST "$SERVER_URL/api/refresh/charts/$id" \
+                -H "x-refresh-token: $REFRESH_TOKEN" \
+                --max-time 90 --fail-with-body \
+                || echo "::warning::refresh failed for charts/$id" ) &
+          done
+          wait

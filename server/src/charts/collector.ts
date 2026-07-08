@@ -7,7 +7,7 @@
 
 import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { ChartSource, ChartSourceIndex, StoredChart } from './types.js';
+import type { ChartSource, ChartSourceIndex, StoredChart } from './types.ts';
 
 const IMAGE_MAGIC: number[][] = [
     [0x47, 0x49, 0x46], // GIF
@@ -15,16 +15,16 @@ const IMAGE_MAGIC: number[][] = [
     [0xff, 0xd8], // JPEG
 ];
 
-function looksLikeImage(buf: Uint8Array): boolean {
+export function looksLikeImage(buf: Uint8Array): boolean {
     return IMAGE_MAGIC.some(magic => magic.every((b, i) => buf[i] === b));
 }
 
 /** MP4-family containers carry 'ftyp' at byte offset 4. */
-function looksLikeVideo(buf: Uint8Array): boolean {
+export function looksLikeVideo(buf: Uint8Array): boolean {
     return buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70;
 }
 
-function safeFileName(url: string, index: number): string {
+export function safeFileName(url: string, index: number): string {
     const base = (new URL(url).pathname.split('/').pop() ?? `chart-${index}`)
         .toLowerCase()
         .replace(/[^a-z0-9._-]+/g, '_');
@@ -96,6 +96,7 @@ export class ChartCollector {
                     forecastHours: img.forecastHours,
                     mediaType,
                     originUrl: img.url,
+                    url: `/charts/${source.id}/${file}`,
                 });
             }
 

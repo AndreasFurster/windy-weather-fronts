@@ -1,12 +1,13 @@
 import type { SourceDataset, SourceListing } from './frontTypes';
 
 /**
- * Base URL of the fronts backend (see the `server/` directory of this repo).
- * For local development the backend runs on http://localhost:3311; browsers
- * treat localhost as a secure origin, so windy.com (https) may fetch from it.
- * Point this at an https deployment for production use.
+ * Base URL of the fronts backend (see the `server/` directory of this repo),
+ * deployed on Vercel. For local development against `npm start` in
+ * `server/`, temporarily change this to http://localhost:3311 (browsers
+ * treat localhost as a secure origin, so windy.com/developer-mode may still
+ * fetch from it over http).
  */
-export const BACKEND_URL = 'http://localhost:3311';
+export const BACKEND_URL = 'https://weather-fronts-server.vercel.app';
 
 export async function fetchSources(): Promise<SourceListing[]> {
     const res = await fetch(`${BACKEND_URL}/api/sources`);

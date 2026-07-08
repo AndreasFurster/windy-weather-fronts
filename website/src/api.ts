@@ -26,7 +26,9 @@ export interface ChartSourceIndex {
 const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL ?? '';
 
 export function chartUrl(chart: StoredChart): string {
-    return `${BACKEND_URL}${chart.url}`;
+    // The Vercel/Blob backend returns absolute CDN URLs already; the local/fs
+    // backend returns a relative /charts/... path that needs the API host.
+    return /^https?:\/\//.test(chart.url) ? chart.url : `${BACKEND_URL}${chart.url}`;
 }
 
 export async function fetchChartSources(): Promise<ChartSourceIndex[]> {

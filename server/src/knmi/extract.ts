@@ -13,8 +13,8 @@
  * single stationary front.
  */
 
-import type { RgbaImage } from './gif.js';
-import type { FrontsFeature, FrontType } from '../types.js';
+import type { RgbaImage } from './gif.ts';
+import type { FrontsFeature, FrontType } from '../types.ts';
 import {
     connectedComponents,
     maskColor,
@@ -22,8 +22,8 @@ import {
     traceComponent,
     type Component,
     type PixelPoint,
-} from './image.js';
-import { KNMI_CHART_PARAMS, pxToLatLon, type StereoParams } from './georef.js';
+} from './image.ts';
+import { KNMI_CHART_PARAMS, pxToLatLon, type StereoParams } from './georef.ts';
 
 const COLORS: { color: [number, number, number]; type: FrontType }[] = [
     { color: [0, 0, 255], type: 'cold' },

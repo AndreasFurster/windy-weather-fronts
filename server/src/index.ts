@@ -16,20 +16,22 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import type { FrontsSource } from './types.js';
-import { Store } from './store.js';
-import { knmiSource } from './sources/knmi.js';
-import { wpcSource } from './sources/wpc.js';
-import { metofficeSource } from './sources/metoffice.js';
-import { ChartCollector } from './charts/collector.js';
-import { chartSources } from './charts/sources.js';
+import type { FrontsSource } from './types.ts';
+import { Store } from './store.ts';
+import { frontsSources } from './sources/index.ts';
+import { ChartCollector } from './charts/collector.ts';
+import { chartSources } from './charts/sources.ts';
 
 const PORT = parseInt(process.env.PORT ?? '3311', 10);
 const DATA_DIR = process.env.DATA_DIR
     ?? join(dirname(fileURLToPath(import.meta.url)), '..', 'data');
 const CHARTS_DIR = join(DATA_DIR, 'charts');
 
-const sources: FrontsSource[] = [knmiSource, wpcSource, metofficeSource];
+// This Express server is the local/Docker entry point (long-running process,
+// setInterval scheduler, plain disk storage). The Vercel deployment uses the
+// serverless functions under api/ instead (see api/refresh/**), which share
+// the same source adapters but persist to Vercel Blob — see server/README.md.
+const sources = frontsSources;
 const store = new Store(DATA_DIR);
 const chartCollector = new ChartCollector(CHARTS_DIR);
 
@@ -97,13 +99,7 @@ app.get('/api/sources', (_req, res) => {
 
 app.get('/api/charts', (_req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=120');
-    res.json(chartCollector.list().map(entry => ({
-        ...entry,
-        charts: entry.charts.map(c => ({
-            ...c,
-            url: `/charts/${entry.id}/${c.file}`,
-        })),
-    })));
+    res.json(chartCollector.list());
 });
 
 app.use('/charts', express.static(CHARTS_DIR, {

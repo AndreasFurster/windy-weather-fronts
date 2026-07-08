@@ -9,10 +9,10 @@
  * `../knmi/extract.ts` and `../knmi/georef.ts`.
  */
 
-import type { FrontsSource, FrontsTimestep } from '../types.js';
-import { decodeGif } from '../knmi/gif.js';
-import { extractFronts } from '../knmi/extract.js';
-import { KNMI_CHART_PARAMS } from '../knmi/georef.js';
+import type { FrontsSource, FrontsTimestep } from '../types.ts';
+import { decodeGif } from '../knmi/gif.ts';
+import { extractFronts } from '../knmi/extract.ts';
+import { KNMI_CHART_PARAMS } from '../knmi/georef.ts';
 
 export const KNMI_PAGE_URL = 'https://www.knmi.nl/nederland-nu/weer/waarschuwingen-en-verwachtingen/weerkaarten';
 const PAGE_URL = KNMI_PAGE_URL;

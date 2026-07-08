@@ -1,0 +1,13 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "rewrites": [
+        {
+            "source": "/api/:path*",
+            "destination": "https://weather-fronts-server.vercel.app/api/:path*"
+        },
+        {
+            "source": "/charts/:path*",
+            "destination": "https://weather-fronts-server.vercel.app/charts/:path*"
+        }
+    ]
+}

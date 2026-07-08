@@ -22,7 +22,7 @@ import type {
     FrontsSource,
     FrontsTimestep,
     FrontType,
-} from '../types.js';
+} from '../types.ts';
 
 const ANALYSIS_URL = 'https://tgftp.nws.noaa.gov/data/raw/as/asxx21.egrr..txt';
 

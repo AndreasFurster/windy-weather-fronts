@@ -31,13 +31,19 @@ export interface ChartSource {
 }
 
 export interface StoredChart {
-    /** Filename inside data/charts/<sourceId>/. */
+    /** Filename inside data/charts/<sourceId>/ (fs backend) or the blob
+     * pathname's basename (Blob backend). */
     file: string;
     label: string;
     validTime?: string;
     forecastHours?: number;
     mediaType: 'image' | 'video';
     originUrl: string;
+    /** Where to fetch the mirrored copy from: a relative `/charts/...` path
+     * (fs backend, resolved against the API host) or an absolute Vercel Blob
+     * URL (Blob backend). Set once at write time so API handlers can return
+     * it as-is. */
+    url: string;
 }
 
 export interface ChartSourceIndex {

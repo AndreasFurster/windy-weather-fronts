@@ -4,7 +4,7 @@
  * spur pruning, longest-path tracing and Douglas-Peucker simplification.
  */
 
-import type { RgbaImage } from './gif.js';
+import type { RgbaImage } from './gif.ts';
 
 export interface Component {
     /** Pixel indices (y * width + x) in image coordinates. */
