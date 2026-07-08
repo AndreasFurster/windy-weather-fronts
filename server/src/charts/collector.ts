@@ -56,8 +56,8 @@ export class ChartCollector {
         return [...this.index.values()];
     }
 
-    async refresh(source: ChartSource): Promise<void> {
-        const previous = this.index.get(source.id);
+    async refresh(source: ChartSource, previous?: ChartSourceIndex): Promise<void> {
+        const prev = previous ?? this.index.get(source.id);
         try {
             const images = await source.list();
             const dir = join(this.chartsDir, source.id);
@@ -122,8 +122,9 @@ export class ChartCollector {
             console.log(`[charts:${source.id}] mirrored ${charts.length} images`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            if (previous?.available) {
+            if (prev?.available) {
                 console.warn(`[charts:${source.id}] refresh failed, keeping previous set: ${message}`);
+                this.index.set(source.id, prev);
                 return;
             }
             this.index.set(source.id, {

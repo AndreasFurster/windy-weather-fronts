@@ -138,6 +138,41 @@ export async function handleRefreshCharts(
 }
 
 // ---------------------------------------------------------------------------
+// POST /api/refresh  (refresh all sources)
+// ---------------------------------------------------------------------------
+export interface RefreshAllResult {
+    type: 'fronts' | 'charts';
+    sourceId: string;
+    status: number;
+    body: unknown;
+}
+
+export async function handleRefreshAll(
+    store: IDataStore,
+    frontsSources: FrontsSource[],
+    chartSources: ChartSource[],
+    onResult?: (r: RefreshAllResult) => void,
+): Promise<RefreshAllResult[]> {
+    const results: RefreshAllResult[] = [];
+
+    for (const source of frontsSources) {
+        const { status, body } = await handleRefreshFronts(store, frontsSources, source.info.id);
+        const r: RefreshAllResult = { type: 'fronts', sourceId: source.info.id, status, body };
+        results.push(r);
+        onResult?.(r);
+    }
+
+    for (const source of chartSources) {
+        const { status, body } = await handleRefreshCharts(store, chartSources, source.id);
+        const r: RefreshAllResult = { type: 'charts', sourceId: source.id, status, body };
+        results.push(r);
+        onResult?.(r);
+    }
+
+    return results;
+}
+
+// ---------------------------------------------------------------------------
 // Auth helper — framework-independent token check
 // ---------------------------------------------------------------------------
 export function isRefreshTokenValid(headerValue: string | string[] | undefined): boolean {

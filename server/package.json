@@ -16,6 +16,7 @@
     "dependencies": {
         "@vercel/blob": "^2.6.1",
         "express": "^4.21.2",
+        "node-html-parser": "^9.0.0",
         "omggif": "^1.0.10",
         "tsx": "^4.23.0"
     },

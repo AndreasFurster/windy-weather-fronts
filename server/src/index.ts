@@ -28,6 +28,7 @@ import {
     handleGetCharts,
     handleRefreshFronts,
     handleRefreshCharts,
+    handleRefreshAll,
     isRefreshTokenValid,
 } from './apiHandlers.js';
 
@@ -35,6 +36,7 @@ const PORT = parseInt(process.env.PORT ?? '3311', 10);
 const DATA_DIR = process.env.DATA_DIR
     ?? join(dirname(fileURLToPath(import.meta.url)), '..', 'data');
 const CHARTS_DIR = join(DATA_DIR, 'charts');
+const CHARTS_META_DIR = join(CHARTS_DIR, 'meta');
 
 // This Express server is the local/Docker entry point (long-running process,
 // setInterval scheduler, plain disk storage). The Vercel deployment uses the
@@ -42,7 +44,7 @@ const CHARTS_DIR = join(DATA_DIR, 'charts');
 // the same source adapters but persist to Vercel Blob — see server/README.md.
 const store = new Store(DATA_DIR);
 const chartCollector = new ChartCollector(CHARTS_DIR);
-const dataStore = new DiskDataStore(store, chartCollector);
+const dataStore = new DiskDataStore(store, chartCollector, CHARTS_META_DIR);
 
 function startScheduler(): void {
     for (const source of frontsSources) {
@@ -105,6 +107,23 @@ app.get('/api/fronts/:sourceId', async (req, res) => {
     const { status, body } = await handleGetFronts(dataStore, frontsSources, req.params.sourceId);
     if (status === 200) res.setHeader('Cache-Control', 'public, max-age=120');
     res.status(status).json(body);
+});
+
+app.get('/api/refresh', async (req, res) => {
+    if (!isRefreshTokenValid(req.headers['x-refresh-token'])) {
+        res.status(401).json({ error: 'invalid or missing x-refresh-token header' });
+        return;
+    }
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('X-Accel-Buffering', 'no'); // prevent nginx/proxy buffering
+    res.flushHeaders();
+
+    await handleRefreshAll(dataStore, frontsSources, chartSources, r => {
+        const icon = r.status < 400 ? '✓' : '✗';
+        res.write(`${icon} [${r.type}/${r.sourceId}] ${JSON.stringify(r.body)}\n`);
+    });
+
+    res.end('\ndone\n');
 });
 
 app.post('/api/refresh/fronts/:sourceId', async (req, res) => {

@@ -5,6 +5,7 @@
         { "source": "/health", "destination": "/api/health" }
     ],
     "functions": {
+        "api/refresh.ts": { "maxDuration": 300 },
         "api/refresh/fronts/[sourceId].ts": { "maxDuration": 60 },
         "api/refresh/charts/[sourceId].ts": { "maxDuration": 60 },
         "api/fronts/[sourceId].ts": { "maxDuration": 15 },

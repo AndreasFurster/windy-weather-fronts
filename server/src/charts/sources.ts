@@ -8,6 +8,7 @@
 import type { ChartImage, ChartSource } from './types.js';
 import { findKnmiCharts, KNMI_PAGE_URL } from '../sources/knmi.js';
 import { meteobeSource } from './meteobe.js';
+import { parse as parseHtml } from 'node-html-parser';
 
 const UA = { 'user-agent': 'windy-weather-fronts (chart mirror)' };
 
@@ -81,17 +82,19 @@ const metofficeCharts: ChartSource = {
 
     async list() {
         const html = await fetchPage(this.pageUrl);
-        const re = /https:\/\/data\.consumer-digital\.api\.metoffice\.gov\.uk\/v1\/surface-pressure\/colour\/(\d{4})-(\d{2})-(\d{2})T(\d{2})(\d{2})\/FSXX00T_(\d{2})\.gif/g;
+        const root = parseHtml(html);
+        const urlRe = /\/colour\/(\d{4})-(\d{2})-(\d{2})T(\d{2})(\d{2})\/FSXX\d{2}T_(\d{2})\.gif$/;
         const images: ChartImage[] = [];
-        const seen = new Set<string>();
 
-        for (const m of html.matchAll(re)) {
-            if (seen.has(m[0])) continue;
-            seen.add(m[0]);
+        for (const img of root.querySelectorAll('#colourCharts li img')) {
+            const src = img.getAttribute('src');
+            if (!src) continue;
+            const m = urlRe.exec(src);
+            if (!m) continue;
             const base = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
             const forecastHours = parseInt(m[6], 10);
             images.push({
-                url: m[0],
+                url: src,
                 label: hoursLabel(forecastHours),
                 validTime: new Date(base + forecastHours * 3_600_000).toISOString(),
                 forecastHours,
