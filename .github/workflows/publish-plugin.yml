@@ -11,10 +11,12 @@ jobs:
         steps:
             - uses: actions/checkout@v2
             - name: Build
+              working-directory: plugin
               run: |
                   npm install
                   npm run build
             - name: Publish Plugin
+              working-directory: plugin
               run: |
                   if [ -z "$WINDY_API_KEY" ]; then
                     echo "Secret WINDY_API_KEY is not configured" >&2
