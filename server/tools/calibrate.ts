@@ -8,8 +8,8 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { decodeGif, type RgbaImage } from '../src/knmi/gif.ts';
-import { latLonToPx, type StereoParams } from '../src/knmi/georef.ts';
+import { decodeGif, type RgbaImage } from '../src/knmi/gif.js';
+import { latLonToPx, type StereoParams } from '../src/knmi/georef.js';
 
 const PAGE_URL = 'https://www.knmi.nl/nederland-nu/weer/waarschuwingen-en-verwachtingen/weerkaarten';
 const GRAY: [number, number, number] = [190, 190, 190];

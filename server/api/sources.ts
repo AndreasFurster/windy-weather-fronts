@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { frontsSources } from '../src/sources/index.ts';
-import { blobReadJson } from '../src/blobKv.ts';
-import type { SourceDataset } from '../src/types.ts';
+import { frontsSources } from '../src/sources/index.js';
+import { blobReadJson } from '../src/blobKv.js';
+import type { SourceDataset } from '../src/types.js';
 
 export default async function handler(_req: VercelRequest, res: VercelResponse): Promise<void> {
     res.setHeader('Access-Control-Allow-Origin', '*');

@@ -18,7 +18,7 @@ import type {
     FrontsSource,
     FrontsTimestep,
     FrontType,
-} from '../types.ts';
+} from '../types.js';
 
 const ANALYSIS_URL = 'https://tgftp.nws.noaa.gov/data/raw/as/asus02.kwbc.cod.sus.txt';
 const FORECAST_URL = 'https://tgftp.nws.noaa.gov/data/raw/fs/fsus02.kwbc.cod.srp.txt';

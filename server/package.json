@@ -5,18 +5,19 @@
     "type": "module",
     "private": true,
     "engines": {
-        "node": ">=23.6"
+        "node": ">=20"
     },
     "scripts": {
-        "start": "node src/index.ts",
-        "dev": "node --watch src/index.ts",
-        "calibrate": "node tools/calibrate.ts",
-        "extract-preview": "node tools/extract-preview.ts"
+        "start": "tsx src/index.ts",
+        "dev": "tsx watch src/index.ts",
+        "calibrate": "tsx tools/calibrate.ts",
+        "extract-preview": "tsx tools/extract-preview.ts"
     },
     "dependencies": {
         "@vercel/blob": "^2.6.1",
         "express": "^4.21.2",
-        "omggif": "^1.0.10"
+        "omggif": "^1.0.10",
+        "tsx": "^4.23.0"
     },
     "devDependencies": {
         "@types/express": "^4.17.21",

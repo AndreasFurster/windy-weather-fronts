@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { chartSources } from '../../../src/charts/sources.ts';
-import { blobReadJson, blobWriteJson } from '../../../src/blobKv.ts';
-import { refreshChartSourceToBlob } from '../../../src/charts/blobCollector.ts';
-import { requireRefreshToken } from '../../../src/refreshAuth.ts';
-import type { ChartSourceIndex } from '../../../src/charts/types.ts';
+import { chartSources } from '../../../src/charts/sources.js';
+import { blobReadJson, blobWriteJson } from '../../../src/blobKv.js';
+import { refreshChartSourceToBlob } from '../../../src/charts/blobCollector.js';
+import { requireRefreshToken } from '../../../src/refreshAuth.js';
+import type { ChartSourceIndex } from '../../../src/charts/types.js';
 
 /**
  * Refreshes one mirrored chart-image source and stores the images + index in

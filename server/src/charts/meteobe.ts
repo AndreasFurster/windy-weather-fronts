@@ -11,7 +11,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import type { ChartImage, ChartSource } from './types.ts';
+import type { ChartImage, ChartSource } from './types.js';
 
 const execFileP = promisify(execFile);
 

@@ -10,8 +10,8 @@
  */
 
 import { del, list, put } from '@vercel/blob';
-import type { ChartSource, ChartSourceIndex, StoredChart } from './types.ts';
-import { looksLikeImage, looksLikeVideo, safeFileName } from './collector.ts';
+import type { ChartSource, ChartSourceIndex, StoredChart } from './types.js';
+import { looksLikeImage, looksLikeVideo, safeFileName } from './collector.js';
 
 function contentTypeFor(fileName: string, mediaType: 'image' | 'video'): string {
     if (mediaType === 'video') return 'video/mp4';

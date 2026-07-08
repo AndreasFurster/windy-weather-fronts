@@ -5,9 +5,9 @@
  * website never hotlinks the origin.
  */
 
-import type { ChartImage, ChartSource } from './types.ts';
-import { findKnmiCharts, KNMI_PAGE_URL } from '../sources/knmi.ts';
-import { meteobeSource } from './meteobe.ts';
+import type { ChartImage, ChartSource } from './types.js';
+import { findKnmiCharts, KNMI_PAGE_URL } from '../sources/knmi.js';
+import { meteobeSource } from './meteobe.js';
 
 const UA = { 'user-agent': 'windy-weather-fronts (chart mirror)' };
 

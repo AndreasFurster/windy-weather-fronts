@@ -16,11 +16,11 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import type { FrontsSource } from './types.ts';
-import { Store } from './store.ts';
-import { frontsSources } from './sources/index.ts';
-import { ChartCollector } from './charts/collector.ts';
-import { chartSources } from './charts/sources.ts';
+import type { FrontsSource } from './types.js';
+import { Store } from './store.js';
+import { frontsSources } from './sources/index.js';
+import { ChartCollector } from './charts/collector.js';
+import { chartSources } from './charts/sources.js';
 
 const PORT = parseInt(process.env.PORT ?? '3311', 10);
 const DATA_DIR = process.env.DATA_DIR

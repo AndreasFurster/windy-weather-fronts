@@ -17,4 +17,4 @@ ENV DATA_DIR=/data
 VOLUME /data
 EXPOSE 3311
 
-CMD ["node", "src/index.ts"]
+CMD ["npx", "tsx", "src/index.ts"]

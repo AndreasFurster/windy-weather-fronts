@@ -6,9 +6,9 @@
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
-import { decodeGif } from '../src/knmi/gif.ts';
-import { extractPixelChart } from '../src/knmi/extract.ts';
-import { pxToLatLon, KNMI_CHART_PARAMS } from '../src/knmi/georef.ts';
+import { decodeGif } from '../src/knmi/gif.js';
+import { extractPixelChart } from '../src/knmi/extract.js';
+import { pxToLatLon, KNMI_CHART_PARAMS } from '../src/knmi/georef.js';
 
 const [inPath, outPath] = process.argv.slice(2);
 if (!inPath || !outPath) {

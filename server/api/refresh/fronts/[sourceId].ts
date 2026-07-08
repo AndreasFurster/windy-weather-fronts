@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { frontsSources } from '../../../src/sources/index.ts';
-import { blobWriteJson } from '../../../src/blobKv.ts';
-import { requireRefreshToken } from '../../../src/refreshAuth.ts';
+import { frontsSources } from '../../../src/sources/index.js';
+import { blobWriteJson } from '../../../src/blobKv.js';
+import { requireRefreshToken } from '../../../src/refreshAuth.js';
 
 /**
  * Refreshes one vectorized front-geometry source and stores it in Vercel

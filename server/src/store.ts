@@ -5,7 +5,7 @@
 
 import { mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { SourceDataset } from './types.ts';
+import type { SourceDataset } from './types.js';
 
 export class Store {
     private datasets = new Map<string, SourceDataset>();

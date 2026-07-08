@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { blobReadJson } from '../src/blobKv.ts';
-import type { ChartSourceIndex } from '../src/charts/types.ts';
+import { blobReadJson } from '../src/blobKv.js';
+import type { ChartSourceIndex } from '../src/charts/types.js';
 
 export default async function handler(_req: VercelRequest, res: VercelResponse): Promise<void> {
     res.setHeader('Access-Control-Allow-Origin', '*');
