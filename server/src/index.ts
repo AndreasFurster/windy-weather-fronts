@@ -16,13 +16,13 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import type { FrontsSource } from './types.ts';
-import { Store } from './store.ts';
-import { knmiSource } from './sources/knmi.ts';
-import { wpcSource } from './sources/wpc.ts';
-import { metofficeSource } from './sources/metoffice.ts';
-import { ChartCollector } from './charts/collector.ts';
-import { chartSources } from './charts/sources.ts';
+import type { FrontsSource } from './types.js';
+import { Store } from './store.js';
+import { knmiSource } from './sources/knmi.js';
+import { wpcSource } from './sources/wpc.js';
+import { metofficeSource } from './sources/metoffice.js';
+import { ChartCollector } from './charts/collector.js';
+import { chartSources } from './charts/sources.js';
 
 const PORT = parseInt(process.env.PORT ?? '3311', 10);
 const DATA_DIR = process.env.DATA_DIR

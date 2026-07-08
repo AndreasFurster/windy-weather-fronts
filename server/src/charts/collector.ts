@@ -7,7 +7,7 @@
 
 import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { ChartSource, ChartSourceIndex, StoredChart } from './types.ts';
+import type { ChartSource, ChartSourceIndex, StoredChart } from './types.js';
 
 const IMAGE_MAGIC: number[][] = [
     [0x47, 0x49, 0x46], // GIF
