@@ -22,12 +22,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     const started = Date.now();
-    const index = (await blobReadJson<ChartSourceIndex[]>('charts/index.json')) ?? [];
-    const previous = index.find(e => e.id === sourceId) ?? null;
+    const previous = await blobReadJson<ChartSourceIndex>(`charts/meta/${sourceId}.json`);
 
     const updated = await refreshChartSourceToBlob(source, previous);
-    const nextIndex = [...index.filter(e => e.id !== sourceId), updated];
-    await blobWriteJson('charts/index.json', nextIndex);
+    await blobWriteJson(`charts/meta/${sourceId}.json`, updated);
 
     res.status(updated.available ? 200 : 502).json({
         ok: updated.available,
