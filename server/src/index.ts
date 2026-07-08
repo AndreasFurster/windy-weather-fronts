@@ -123,6 +123,69 @@ app.get('/api/fronts/:sourceId', (req, res) => {
     res.json({ ...source.info, ...dataset });
 });
 
+function checkRefreshToken(req: express.Request, res: express.Response): boolean {
+    const expected = process.env.REFRESH_TOKEN;
+    if (!expected) return true;
+    if (req.headers['x-refresh-token'] !== expected) {
+        res.status(401).json({ error: 'invalid or missing x-refresh-token header' });
+        return false;
+    }
+    return true;
+}
+
+app.post('/api/refresh/fronts/:sourceId', async (req, res) => {
+    if (!checkRefreshToken(req, res)) return;
+    const source = sources.find(s => s.info.id === req.params.sourceId);
+    if (!source) {
+        res.status(404).json({ error: `unknown source '${req.params.sourceId}'` });
+        return;
+    }
+    const started = Date.now();
+    try {
+        const result = await source.fetch();
+        await store.put({
+            sourceId: source.info.id,
+            fetchedAt: new Date().toISOString(),
+            ...result,
+        });
+        const nFeatures = result.timesteps.reduce((n, t) => n + t.geojson.features.length, 0);
+        res.status(200).json({
+            ok: true,
+            sourceId: source.info.id,
+            durationMs: Date.now() - started,
+            timesteps: result.timesteps.length,
+            features: nFeatures,
+        });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        res.status(502).json({ ok: false, sourceId: source.info.id, error: message });
+    }
+});
+
+app.post('/api/refresh/charts/:sourceId', async (req, res) => {
+    if (!checkRefreshToken(req, res)) return;
+    const source = chartSources.find(s => s.id === req.params.sourceId);
+    if (!source) {
+        res.status(404).json({ error: `unknown chart source '${req.params.sourceId}'` });
+        return;
+    }
+    const started = Date.now();
+    try {
+        await chartCollector.refresh(source);
+        const entry = chartCollector.list().find(e => e.id === source.id);
+        res.status(entry?.available ? 200 : 502).json({
+            ok: entry?.available ?? false,
+            sourceId: source.id,
+            durationMs: Date.now() - started,
+            charts: entry?.charts.length ?? 0,
+            error: entry?.error,
+        });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        res.status(502).json({ ok: false, sourceId: source.id, error: message });
+    }
+});
+
 await store.load();
 await chartCollector.load();
 app.listen(PORT, () => {

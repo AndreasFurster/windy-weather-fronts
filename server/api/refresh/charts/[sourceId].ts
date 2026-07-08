@@ -12,10 +12,6 @@ import type { ChartSourceIndex } from '../../../src/charts/types.js';
  * meant to be hit from a browser.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
-    if (req.method !== 'POST') {
-        res.status(405).json({ error: 'use POST' });
-        return;
-    }
     if (!requireRefreshToken(req, res)) return;
 
     const sourceId = req.query.sourceId as string;
