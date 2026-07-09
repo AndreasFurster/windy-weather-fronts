@@ -7,7 +7,10 @@ parts:
 | --- | --- |
 | [`server/`](server/) | Node.js backend: periodically collects front data (vectorized GeoJSON + mirrored chart images) and serves it over a JSON API |
 | [`plugin/`](plugin/) | Windy.com plugin: renders fronts and H/L pressure centers on the Windy map with classic front symbology |
-| [`website/`](website/) | Vite/Vue/TS site: side-by-side comparison grid of the mirrored front charts from all sources |
+| [`website/`](website/) | Vite/Vue/TS site: chart comparison grid, plus a `/plugin` page that demonstrates the KNMI extraction step by step on the latest chart |
+
+A concise architecture guide aimed at LLMs (and humans in a hurry) lives in
+[CLAUDE.md](CLAUDE.md).
 
 ```
 KNMI chart images ────┐ (color masking, thinning,
