@@ -16,7 +16,6 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import type { FrontsSource } from './types.js';
 import { Store } from './store.js';
 import { frontsSources } from './sources/index.js';
 import { ChartCollector } from './charts/collector.js';
@@ -26,6 +25,7 @@ import {
     handleGetSources,
     handleGetFronts,
     handleGetCharts,
+    handleKnmiProcess,
     handleRefreshFronts,
     handleRefreshCharts,
     handleRefreshAll,
@@ -46,32 +46,24 @@ const store = new Store(DATA_DIR);
 const chartCollector = new ChartCollector(CHARTS_DIR);
 const dataStore = new DiskDataStore(store, chartCollector, CHARTS_META_DIR);
 
+// The scheduler goes through the same handlers as the HTTP refresh endpoints
+// so that everything they persist (including the per-source charts meta files
+// that /api/charts and /api/knmi/process read) stays in sync.
 function startScheduler(): void {
     for (const source of frontsSources) {
-        void refreshFrontsSource(source);
-        setInterval(() => void refreshFrontsSource(source), source.info.refreshMinutes * 60_000);
+        const run = (): void => {
+            void handleRefreshFronts(dataStore, frontsSources, source.info.id);
+        };
+        run();
+        setInterval(run, source.info.refreshMinutes * 60_000);
     }
     for (const source of chartSources) {
-        void chartCollector.refresh(source);
-        setInterval(
-            () => void chartCollector.refresh(source),
-            source.refreshMinutes * 60_000,
-        );
-    }
-}
-
-async function refreshFrontsSource(source: FrontsSource): Promise<void> {
-    const { id } = source.info;
-    try {
-        const started = Date.now();
-        const result = await source.fetch();
-        await store.put({ sourceId: id, fetchedAt: new Date().toISOString(), ...result });
-        const nFeatures = result.timesteps.reduce((n, t) => n + t.geojson.features.length, 0);
-        console.log(
-            `[${id}] refreshed in ${Date.now() - started}ms: ` +
-            `${result.timesteps.length} timesteps, ${nFeatures} features`);
-    } catch (err) {
-        console.error(`[${id}] refresh failed (keeping previous data):`, err);
+        const run = (): void => {
+            void handleRefreshCharts(dataStore, chartSources, source.id).catch(err =>
+                console.error(`[charts:${source.id}] scheduled refresh failed:`, err));
+        };
+        run();
+        setInterval(run, source.refreshMinutes * 60_000);
     }
 }
 
@@ -106,6 +98,12 @@ app.use('/charts', express.static(CHARTS_DIR, {
 app.get('/api/fronts/:sourceId', async (req, res) => {
     const { status, body } = await handleGetFronts(dataStore, frontsSources, req.params.sourceId);
     if (status === 200) res.setHeader('Cache-Control', 'public, max-age=120');
+    res.status(status).json(body);
+});
+
+app.get('/api/knmi/process', async (_req, res) => {
+    const { status, body } = await handleKnmiProcess(dataStore);
+    if (status === 200) res.setHeader('Cache-Control', 'public, max-age=600');
     res.status(status).json(body);
 });
 

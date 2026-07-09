@@ -10,6 +10,9 @@
 import type { IDataStore } from './dataStore.js';
 import type { FrontsSource } from './types.js';
 import type { ChartSource } from './charts/types.js';
+import { decodeGif } from './knmi/gif.js';
+import { extractFronts, extractPixelChart } from './knmi/extract.js';
+import { KNMI_CHART_PARAMS } from './knmi/georef.js';
 
 type HandlerResult = { status: number; body: unknown };
 
@@ -61,6 +64,50 @@ export async function handleGetFronts(
 export async function handleGetCharts(store: IDataStore): Promise<HandlerResult> {
     const body = await store.listChartsMeta();
     return { status: 200, body };
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/knmi/process
+//
+// Demo/debug data for the website's "how the KNMI extraction works" page:
+// runs the full extraction on the latest mirrored KNMI analysis chart and
+// returns every intermediate representation, so the site can visualize each
+// step (chart image, traced pixel paths, projected coordinates).
+// ---------------------------------------------------------------------------
+export async function handleKnmiProcess(store: IDataStore): Promise<HandlerResult> {
+    const meta = await store.getChartsMeta('knmi');
+    const chart = meta?.charts.find(c => c.forecastHours === 0) ?? meta?.charts[0];
+    if (!meta || !chart) {
+        return { status: 503, body: { error: 'no mirrored KNMI chart yet, refresh first' } };
+    }
+
+    const bytes = await store.getChartFile('knmi', chart);
+    if (!bytes) {
+        return { status: 503, body: { error: 'mirrored KNMI chart file is missing' } };
+    }
+
+    const img = decodeGif(bytes);
+    const { fronts, centers } = extractPixelChart(img);
+    const features = extractFronts(img);
+
+    return {
+        status: 200,
+        body: {
+            chart: {
+                url: chart.url,
+                label: chart.label,
+                validTime: chart.validTime ?? null,
+                originUrl: chart.originUrl,
+                width: img.width,
+                height: img.height,
+                fetchedAt: meta.fetchedAt,
+            },
+            projection: KNMI_CHART_PARAMS,
+            pixelFronts: fronts,
+            pixelCenters: centers,
+            geojson: { type: 'FeatureCollection', features },
+        },
+    };
 }
 
 // ---------------------------------------------------------------------------

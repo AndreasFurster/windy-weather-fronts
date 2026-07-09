@@ -266,6 +266,27 @@ export function simplifyPath(points: PixelPoint[], eps: number): PixelPoint[] {
     return points.filter((_, i) => keep[i]);
 }
 
+/**
+ * Chaikin corner cutting: rounds the hard corners left by Douglas-Peucker
+ * simplification so fronts render as smooth curves. Endpoints are preserved.
+ */
+export function chaikinSmooth(points: PixelPoint[], iterations = 2): PixelPoint[] {
+    let pts = points;
+    for (let it = 0; it < iterations; it++) {
+        if (pts.length < 3) return pts;
+        const out: PixelPoint[] = [pts[0]];
+        for (let i = 0; i < pts.length - 1; i++) {
+            const [ax, ay] = pts[i];
+            const [bx, by] = pts[i + 1];
+            out.push([ax * 0.75 + bx * 0.25, ay * 0.75 + by * 0.25]);
+            out.push([ax * 0.25 + bx * 0.75, ay * 0.25 + by * 0.75]);
+        }
+        out.push(pts[pts.length - 1]);
+        pts = out;
+    }
+    return pts;
+}
+
 export function pathPixelLength(points: PixelPoint[]): number {
     let len = 0;
     for (let i = 1; i < points.length; i++) {

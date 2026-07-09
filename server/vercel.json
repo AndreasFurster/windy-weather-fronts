@@ -9,6 +9,7 @@
         "api/refresh/fronts/[sourceId].ts": { "maxDuration": 60 },
         "api/refresh/charts/[sourceId].ts": { "maxDuration": 60 },
         "api/fronts/[sourceId].ts": { "maxDuration": 15 },
+        "api/knmi/process.ts": { "maxDuration": 60 },
         "api/sources.ts": { "maxDuration": 15 },
         "api/charts.ts": { "maxDuration": 15 },
         "api/health.ts": { "maxDuration": 10 }

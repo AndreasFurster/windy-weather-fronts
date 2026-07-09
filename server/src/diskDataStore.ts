@@ -8,9 +8,9 @@
  */
 
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { SourceDataset } from './types.js';
-import type { ChartSource, ChartSourceIndex } from './charts/types.js';
+import type { ChartSource, ChartSourceIndex, StoredChart } from './charts/types.js';
 import type { IDataStore } from './dataStore.js';
 import type { Store } from './store.js';
 import type { ChartCollector } from './charts/collector.js';
@@ -19,15 +19,25 @@ export class DiskDataStore implements IDataStore {
     private store: Store;
     private chartCollector: ChartCollector;
     private chartsMetaDir: string;
+    private chartsDir: string;
 
     constructor(store: Store, chartCollector: ChartCollector, chartsMetaDir: string) {
         this.store = store;
         this.chartCollector = chartCollector;
         this.chartsMetaDir = chartsMetaDir;
+        this.chartsDir = dirname(chartsMetaDir);
     }
 
     async getFronts(sourceId: string): Promise<SourceDataset | null> {
         return this.store.get(sourceId) ?? null;
+    }
+
+    async getChartFile(sourceId: string, chart: StoredChart): Promise<Uint8Array | null> {
+        try {
+            return new Uint8Array(await readFile(join(this.chartsDir, sourceId, chart.file)));
+        } catch {
+            return null;
+        }
     }
 
     async putFronts(data: SourceDataset): Promise<void> {

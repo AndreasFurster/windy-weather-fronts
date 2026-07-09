@@ -16,6 +16,7 @@
 import type { RgbaImage } from './gif.js';
 import type { FrontsFeature, FrontType } from '../types.js';
 import {
+    chaikinSmooth,
     connectedComponents,
     maskColor,
     pathPixelLength,
@@ -43,9 +44,19 @@ const CHAIN_GAP = 12;
 /**
  * Isobars, coastlines and text labels are drawn over the front lines and cut
  * them into fragments; same-type fragments whose endpoints are within this
- * gap are re-joined.
+ * gap are unconditionally re-joined.
  */
 const BRIDGE_GAP = 9;
+/**
+ * Wider labels (e.g. "1005" drawn across a front) cut gaps of up to ~25 px.
+ * Fragments this far apart are only re-joined when the line direction
+ * continues across the gap (see directionsAlign), so unrelated parallel
+ * fronts are never glued together.
+ */
+const BRIDGE_GAP_ALIGNED = 26;
+/** Max angle (deg) between end tangent, bridge vector and start tangent for
+ * a long-gap bridge to count as "continuing the same line". */
+const BRIDGE_MAX_ANGLE = 42;
 /** Merged paths that remain letter-sized and short are H/L letters: drop.
  * The skeleton of an "H" glyph is ~60px (down one stroke, across, down the
  * other), so anything letter-boxed under 70px is discarded. */
@@ -148,20 +159,22 @@ export function extractPixelChart(img: RgbaImage): PixelExtraction {
     const fronts: PixelFront[] = [];
 
     for (const chain of merged) {
-        fronts.push({ type: 'stationary', points: chain, derived: true });
+        fronts.push({ type: 'stationary', points: chaikinSmooth(chain), derived: true });
     }
     for (const t of traced) {
         if (consumed.has(t)) continue;
         if (t.tiny && t.pixelLength < LETTER_MAX_PATH) continue; // leftover letter bits
-        fronts.push({ type: t.type, points: t.points });
+        fronts.push({ type: t.type, points: chaikinSmooth(t.points) });
     }
     return { fronts, centers };
 }
 
 /**
  * Re-join same-type fragments cut apart by overdrawn isobars, coastlines and
- * labels. Greedy: repeatedly merge the pair of same-type paths with the
- * smallest endpoint gap below BRIDGE_GAP.
+ * labels. Greedy: repeatedly merge the joinable pair with the smallest
+ * endpoint gap. Small gaps (<= BRIDGE_GAP) merge unconditionally; larger
+ * gaps (<= BRIDGE_GAP_ALIGNED, e.g. a front passing under a "1005" label)
+ * only when the line direction continues across the gap.
  */
 function mergeFragments(paths: TracedFront[]): TracedFront[] {
     const list = paths.slice();
@@ -169,46 +182,95 @@ function mergeFragments(paths: TracedFront[]): TracedFront[] {
 
     while (mergedSomething) {
         mergedSomething = false;
-        let bestI = -1, bestJ = -1, bestGap = BRIDGE_GAP;
+        let best: { i: number; j: number; join: Join; gap: number } | null = null;
 
         for (let i = 0; i < list.length; i++) {
             for (let j = i + 1; j < list.length; j++) {
                 if (list[i].type !== list[j].type) continue;
-                const gap = endpointGap(list[i].points, list[j].points);
-                if (gap <= bestGap) { bestGap = gap; bestI = i; bestJ = j; }
+                const join = bestJoin(list[i].points, list[j].points);
+                if (join.gap > BRIDGE_GAP_ALIGNED) continue;
+                if (join.gap > BRIDGE_GAP && !directionsAlign(join)) continue;
+                if (!best || join.gap < best.gap) best = { i, j, join, gap: join.gap };
             }
         }
 
-        if (bestI >= 0) {
-            const a = list[bestI], b = list[bestJ];
-            const points = joinPaths(a.points, b.points);
-            list[bestI] = {
+        if (best) {
+            const a = list[best.i], b = list[best.j];
+            const points = best.join.merge();
+            list[best.i] = {
                 type: a.type,
                 points,
                 pixelLength: pathPixelLength(points),
                 tiny: a.tiny && b.tiny,
             };
-            list.splice(bestJ, 1);
+            list.splice(best.j, 1);
             mergedSomething = true;
         }
     }
     return list;
 }
 
-/** Concatenate two polylines at their closest pair of endpoints. */
-function joinPaths(a: PixelPoint[], b: PixelPoint[]): PixelPoint[] {
-    const d = (p: PixelPoint, q: PixelPoint) => Math.hypot(p[0] - q[0], p[1] - q[1]);
-    const aHead = a[0], aTail = a[a.length - 1];
-    const bHead = b[0], bTail = b[b.length - 1];
+interface Join {
+    gap: number;
+    /** Tangent leaving path A at the joined end (unit vector). */
+    outA: [number, number];
+    /** Tangent entering path B at the joined end (unit vector). */
+    inB: [number, number];
+    /** Bridge vector from A's end to B's start (unit vector; zero gap -> null). */
+    bridge: [number, number] | null;
+    merge: () => PixelPoint[];
+}
 
-    const options: [number, () => PixelPoint[]][] = [
-        [d(aTail, bHead), () => [...a, ...b]],
-        [d(aTail, bTail), () => [...a, ...b.slice().reverse()]],
-        [d(aHead, bHead), () => [...a.slice().reverse(), ...b]],
-        [d(aHead, bTail), () => [...b, ...a]],
+/** Tangent at the last point of a polyline, taken over the trailing ~6 px
+ * for stability against pixel jitter. */
+function endTangent(pts: PixelPoint[]): [number, number] {
+    const last = pts[pts.length - 1];
+    let ref = pts[pts.length - 2] ?? last;
+    for (let i = pts.length - 2; i >= 0; i--) {
+        ref = pts[i];
+        if (Math.hypot(last[0] - ref[0], last[1] - ref[1]) >= 6) break;
+    }
+    const len = Math.hypot(last[0] - ref[0], last[1] - ref[1]) || 1;
+    return [(last[0] - ref[0]) / len, (last[1] - ref[1]) / len];
+}
+
+/** Best (smallest-gap) way to concatenate two polylines end-to-end. */
+function bestJoin(a: PixelPoint[], b: PixelPoint[]): Join {
+    const d = (p: PixelPoint, q: PixelPoint) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+
+    const options: { gap: number; a2: PixelPoint[]; b2: PixelPoint[] }[] = [
+        { gap: d(a[a.length - 1], b[0]), a2: a, b2: b },
+        { gap: d(a[a.length - 1], b[b.length - 1]), a2: a, b2: b.slice().reverse() },
+        { gap: d(a[0], b[0]), a2: a.slice().reverse(), b2: b },
+        { gap: d(a[0], b[b.length - 1]), a2: b, b2: a },
     ];
-    options.sort((x, y) => x[0] - y[0]);
-    return options[0][1]();
+    options.sort((x, y) => x.gap - y.gap);
+    const { gap, a2, b2 } = options[0];
+
+    const endA = a2[a2.length - 1];
+    const startB = b2[0];
+    const bridge: [number, number] | null = gap > 0.5
+        ? [(startB[0] - endA[0]) / gap, (startB[1] - endA[1]) / gap]
+        : null;
+
+    return {
+        gap,
+        outA: endTangent(a2),
+        inB: endTangent(b2.slice().reverse()).map(v => -v) as [number, number],
+        bridge,
+        merge: () => [...a2, ...b2],
+    };
+}
+
+/** True when A's exit direction, the bridge and B's entry direction all
+ * point the same way (within BRIDGE_MAX_ANGLE). */
+function directionsAlign(join: Join): boolean {
+    const cosMin = Math.cos((BRIDGE_MAX_ANGLE * Math.PI) / 180);
+    const dot = (u: [number, number], v: [number, number]) => u[0] * v[0] + u[1] * v[1];
+    if (!join.bridge) return true;
+    return dot(join.outA, join.bridge) >= cosMin
+        && dot(join.bridge, join.inB) >= cosMin
+        && dot(join.outA, join.inB) >= cosMin;
 }
 
 export function extractFronts(

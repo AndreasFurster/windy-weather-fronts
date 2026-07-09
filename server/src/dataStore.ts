@@ -10,12 +10,15 @@
  */
 
 import type { SourceDataset } from './types.js';
-import type { ChartSource, ChartSourceIndex } from './charts/types.js';
+import type { ChartSource, ChartSourceIndex, StoredChart } from './charts/types.js';
 
 export interface IDataStore {
     // --- Fronts data ----------------------------------------------------------
     getFronts(sourceId: string): Promise<SourceDataset | null>;
     putFronts(data: SourceDataset): Promise<void>;
+
+    /** Raw bytes of a mirrored chart image (used by the KNMI process demo). */
+    getChartFile(sourceId: string, chart: StoredChart): Promise<Uint8Array | null>;
 
     // --- Charts metadata ------------------------------------------------------
     listChartsMeta(): Promise<ChartSourceIndex[]>;

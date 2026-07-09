@@ -8,6 +8,10 @@
         {
             "source": "/charts/:path*",
             "destination": "https://weather-fronts-server.vercel.app/charts/:path*"
+        },
+        {
+            "source": "/:path*",
+            "destination": "/index.html"
         }
     ]
 }

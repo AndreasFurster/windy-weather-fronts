@@ -38,9 +38,11 @@ export async function blobWriteJson(pathname: string, value: unknown): Promise<v
  */
 export async function blobListJson<T>(prefix: string): Promise<T[]> {
     const { blobs } = await list({ prefix });
-    const results = await Promise.all(blobs.map(async b => {
-        const res = await fetch(b.url, { cache: 'no-store' });
-        return res.ok ? (await res.json()) as T : null;
-    }));
+    const results: (T | null)[] = await Promise.all(blobs.map(
+        async (b): Promise<T | null> => {
+            const res = await fetch(b.url, { cache: 'no-store' });
+            return res.ok ? (await res.json()) as T : null;
+        },
+    ));
     return results.filter((v): v is T => v !== null);
 }
