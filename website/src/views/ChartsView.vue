@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { chartUrl, fetchChartSources, type ChartSourceIndex, type StoredChart } from '../api';
 import { formatTime } from '../time';
 import ChartCard from '../components/ChartCard.vue';
+import ZoomViewer from '../components/ZoomViewer.vue';
 
 const sources = ref<ChartSourceIndex[]>([]);
 const error = ref<string | null>(null);
@@ -28,17 +29,11 @@ async function load(): Promise<void> {
 onMounted(() => {
     void load();
     refreshTimer = setInterval(() => void load(), 5 * 60_000);
-    window.addEventListener('keydown', onKey);
 });
 
 onUnmounted(() => {
     clearInterval(refreshTimer);
-    window.removeEventListener('keydown', onKey);
 });
-
-function onKey(e: KeyboardEvent): void {
-    if (e.key === 'Escape') lightbox.value = null;
-}
 
 function toggleSource(id: string): void {
     activeSources.value = activeSources.value.includes(id)
@@ -154,12 +149,12 @@ function openLightbox(source: ChartSourceIndex, chart: StoredChart): void {
         </template>
     </main>
 
-    <div v-if="lightbox" class="lightbox" @click="lightbox = null">
-        <figure>
-            <img :src="lightbox.src" :alt="lightbox.title" />
-            <figcaption>{{ lightbox.title }} — click anywhere to close</figcaption>
-        </figure>
-    </div>
+    <ZoomViewer
+        v-if="lightbox"
+        :src="lightbox.src"
+        :title="lightbox.title"
+        @close="lightbox = null"
+    />
 </template>
 
 <style scoped>
@@ -276,36 +271,5 @@ footer ul {
 
 .fetched {
     font-size: 12px;
-}
-
-.lightbox {
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 8, 12, 0.88);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: zoom-out;
-    z-index: 10;
-}
-
-.lightbox figure {
-    margin: 0;
-    max-width: 96vw;
-    max-height: 94vh;
-    text-align: center;
-}
-
-.lightbox img {
-    max-width: 96vw;
-    max-height: 88vh;
-    background: #fff;
-    border-radius: 6px;
-}
-
-.lightbox figcaption {
-    color: var(--muted);
-    margin-top: 8px;
-    font-size: 13px;
 }
 </style>

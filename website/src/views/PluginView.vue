@@ -4,10 +4,29 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { fetchKnmiProcess, resolveMediaUrl, type KnmiProcess } from '../api';
 import { formatTime } from '../time';
+import ZoomViewer from '../components/ZoomViewer.vue';
 
-/** Where the plugin can be installed from (Windy plugin gallery). */
-const INSTALL_URL = 'https://www.windy.com/plugins';
 const REPO_URL = 'https://github.com/AndreasFurster/windy-weather-fronts';
+
+const viewer = ref<{ src: string; title?: string } | null>(null);
+
+function openViewer(src: string, title?: string): void {
+    viewer.value = { src, title };
+}
+
+function openCanvas(canvas: HTMLCanvasElement | null, title?: string): void {
+    if (!canvas) return;
+    viewer.value = { src: canvas.toDataURL(), title };
+}
+
+const copied = ref(false);
+function copyPluginUrl(): void {
+    navigator.clipboard.writeText(PLUGIN_URL).then(() => {
+        copied.value = true;
+        setTimeout(() => (copied.value = false), 2000);
+    });
+}
+const PLUGIN_URL = "https://windy-plugins.com/8533957/windy-plugin-weather-fronts/1.0.0/plugin.min.js";
 
 // Hero screenshots, provided by hand in website/public/screenshots/ (bound
 // dynamically so Vite doesn't try to resolve them at build time while the
@@ -213,7 +232,9 @@ function buildMap(): void {
                         v-if="!heroKnmiMissing"
                         :src="HERO_KNMI_SRC"
                         alt="KNMI surface analysis chart"
+                        class="zoomable"
                         @error="heroKnmiMissing = true"
+                        @click="openViewer(HERO_KNMI_SRC, 'KNMI surface chart')"
                     />
                     <div v-else class="shot-placeholder">
                         screenshot: KNMI front chart<br />
@@ -226,7 +247,9 @@ function buildMap(): void {
                         v-if="!heroWindyMissing"
                         :src="HERO_WINDY_SRC"
                         alt="Windy with the fronts overlay"
+                        class="zoomable"
                         @error="heroWindyMissing = true"
+                        @click="openViewer(HERO_WINDY_SRC, 'Windy fronts overlay')"
                     />
                     <div v-else class="shot-placeholder">
                         screenshot: Windy with fronts overlay<br />
@@ -236,8 +259,20 @@ function buildMap(): void {
                 </figure>
             </div>
 
+            <div class="install-box">
+                <p class="install-steps">
+                    To install: open Windy &rsaquo; Menu &rsaquo; <em>Install Windy Plugin</em> &rsaquo;
+                    <em>Load plugin directly from URL</em> &rsaquo; paste the URL below &rsaquo;
+                    click <em>Install untrusted plugin</em>.
+                </p>
+                <div class="url-copy">
+                    <code class="url-text">{{ PLUGIN_URL }}</code>
+                    <button class="copy-btn" @click="copyPluginUrl">
+                        {{ copied ? 'Copied!' : 'Copy URL' }}
+                    </button>
+                </div>
+            </div>
             <div class="cta">
-                <a class="install" :href="INSTALL_URL" target="_blank" rel="noopener">Install plugin</a>
                 <a class="secondary" :href="REPO_URL" target="_blank" rel="noopener">Source on GitHub</a>
             </div>
         </section>
@@ -263,7 +298,13 @@ function buildMap(): void {
                         every hour. This GIF is the only public form of the front data —
                         there is no machine-readable feed.
                     </p>
-                    <img v-if="data" class="step-media" :src="resolveMediaUrl(data.chart.url)" alt="Latest KNMI chart" />
+                    <img
+                        v-if="data"
+                        class="step-media zoomable"
+                        :src="resolveMediaUrl(data.chart.url)"
+                        alt="Latest KNMI chart"
+                        @click="openViewer(resolveMediaUrl(data.chart.url), 'KNMI chart')"
+                    />
                 </div>
 
                 <div class="step">
@@ -279,11 +320,11 @@ function buildMap(): void {
                     </p>
                     <div class="pair">
                         <figure>
-                            <canvas ref="overlayCanvas" class="step-media" />
+                            <canvas ref="overlayCanvas" class="step-media zoomable" @click="openCanvas(overlayCanvas, 'Traced centerlines over the chart')" />
                             <figcaption>Traced centerlines over the chart</figcaption>
                         </figure>
                         <figure>
-                            <canvas ref="linesCanvas" class="step-media" />
+                            <canvas ref="linesCanvas" class="step-media zoomable" @click="openCanvas(linesCanvas, 'Extracted geometry only')" />
                             <figcaption>Extracted geometry only</figcaption>
                         </figure>
                     </div>
@@ -339,6 +380,13 @@ function buildMap(): void {
             </template>
         </section>
     </main>
+
+    <ZoomViewer
+        v-if="viewer"
+        :src="viewer.src"
+        :title="viewer.title"
+        @close="viewer = null"
+    />
 </template>
 
 <style scoped>
@@ -380,22 +428,28 @@ h2 {
     margin: 0;
 }
 
-.hero-shots img {
+.hero-shots img,
+.shot-placeholder {
     width: 100%;
+    aspect-ratio: 1083 / 696;
     border-radius: 10px;
     border: 1px solid var(--border);
+}
+
+.hero-shots img {
+    object-fit: cover;
     background: #fff;
+    display: block;
+    cursor: zoom-in;
 }
 
 .shot-placeholder {
-    aspect-ratio: 16 / 10;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    border: 1px dashed var(--border);
-    border-radius: 10px;
+    border-style: dashed;
     color: var(--muted);
     font-size: 13px;
     text-align: center;
@@ -408,25 +462,64 @@ h2 {
     margin-top: 6px;
 }
 
+.install-box {
+    margin-top: 22px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    background: #111820;
+}
+
+.install-steps {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.url-copy {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #0c1017;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    overflow: hidden;
+}
+
+.url-text {
+    flex: 1;
+    font-size: 13px;
+    color: #c9d4e8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: all;
+}
+
+.copy-btn {
+    flex: none;
+    background: var(--accent);
+    color: #0c1017;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 5px 14px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.copy-btn:hover {
+    filter: brightness(1.1);
+}
+
 .cta {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin-top: 22px;
-}
-
-.install {
-    background: var(--accent);
-    color: #0c1017;
-    font-weight: 700;
-    padding: 10px 26px;
-    border-radius: 8px;
-    text-decoration: none;
-}
-
-.install:hover {
-    filter: brightness(1.1);
-    text-decoration: none;
+    margin-top: 14px;
 }
 
 .secondary {
@@ -479,6 +572,10 @@ h2 {
     border: 1px solid var(--border);
     background: #fff;
     display: block;
+}
+
+.zoomable {
+    cursor: zoom-in;
 }
 
 .pair {
